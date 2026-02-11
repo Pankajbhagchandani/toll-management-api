@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Text Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background-color: #f0f0ff;
+        }
+
+        .upload-area svg {
+            width: 50px;
+            height: 50px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .upload-area .hint {
+            color: #999;
+            font-size: 12px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-input {
+            cursor: pointer;
+        }
+
+        .selected-file {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f0ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .selected-file.show {
+            display: block;
+        }
+
+        .selected-file p {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .selected-file .filename {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background-color: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-clear:hover {
+            background-color: #d0d0d0;
+        }
+
+        .result {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-header {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .result-content {
+            background-color: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            color: #333;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .result-content table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .result-content table tr {
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-content table tr:last-child {
+            border-bottom: none;
+        }
+
+        .result-content table td {
+            padding: 12px 0;
+            vertical-align: top;
+        }
+
+        .result-content table td:first-child {
+            font-weight: 600;
+            color: #667eea;
+            width: 35%;
+            padding-right: 15px;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background-color: #764ba2;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Image Text Extractor</h1>
+        <p class="subtitle">Upload an image and extract all text from it using AI</p>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="upload-area" id="uploadArea">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <p class="file-input">Click to upload or drag and drop</p>
+            <p class="hint">PNG, JPG, GIF, WEBP up to 5MB</p>
+            <input type="file" id="fileInput" accept="image/*" />
+        </div>
+
+        <div class="selected-file" id="selectedFile">
+            <p>Selected: <span class="filename" id="fileName"></span></p>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 8px;">
+            <label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer;">
+                <input type="radio" name="mode" value="full" checked style="margin-right: 8px;">
+                <span style="color: #333;">Extract All Text</span>
+            </label>
+            <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="radio" name="mode" value="structured" style="margin-right: 8px;">
+                <span style="color: #333;">Extract Fields (Invoice/Document)</span>
+            </label>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-submit" id="submitBtn" disabled>Extract</button>
+            <button class="btn-clear" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Extracting text... Please wait</p>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-header">Extracted Text:</div>
+            <div class="result-content" id="resultContent"></div>
+            <button class="copy-btn" id="copyBtn">📋 Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFile = document.getElementById('selectedFile');
+        const fileName = document.getElementById('fileName');
+        const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const resultContent = document.getElementById('resultContent');
+        const copyBtn = document.getElementById('copyBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const modeRadios = document.querySelectorAll('input[name="mode"]');
+
+        let selectedImageFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                
+                // Check file size (5MB limit)
+                if (file.size > 5 * 1024 * 1024) {
+                    showError('File size exceeds 5MB limit');
+                    return;
+                }
+
+                // Check file type
+                if (!file.type.startsWith('image/')) {
+                    showError('Please select a valid image file');
+                    return;
+                }
+
+                selectedImageFile = file;
+                fileName.textContent = file.name;
+                selectedFile.classList.add('show');
+                submitBtn.disabled = false;
+                clearError();
+                result.classList.remove('show');
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                fileInput.files = files;
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        });
+
+        // Submit
+        submitBtn.addEventListener('click', async () => {
+            if (!selectedImageFile) return;
+
+            const extractionMode = document.querySelector('input[name="mode"]:checked').value;
+            const formData = new FormData();
+            formData.append('image', selectedImageFile);
+
+            if (extractionMode === 'structured') {
+                formData.append('fields', JSON.stringify(['invoiceNumber', 'licensePlate', 'amountDue', 'dueDate', 'company']));
+            }
+
+            loading.classList.add('show');
+            result.classList.remove('show');
+            submitBtn.disabled = true;
+            clearError();
+
+            try {
+                const endpoint = extractionMode === 'structured' ? '/api/extract-structured' : '/api/extract';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to extract data');
+                }
+
+                const data = await response.json();
+                
+                if (extractionMode === 'structured') {
+                    // Display structured data as formatted table
+                    const structuredHTML = formatStructuredData(data.data);
+                    resultContent.innerHTML = structuredHTML;
+                } else {
+                    // Display full text
+                    resultContent.textContent = data.text;
+                }
+                
+                result.classList.add('show');
+            } catch (error) {
+                showError(error.message || 'An error occurred while extracting data');
+            } finally {
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Format structured data as HTML table
+        function formatStructuredData(data) {
+            if (!data || Object.keys(data).length === 0) {
+                return '<p style="color: #999;">No data extracted</p>';
+            }
+
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            for (const [key, value] of Object.entries(data)) {
+                if (value !== null && value !== undefined) {
+                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+                    html += `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px; font-weight: bold; color: #667eea; width: 40%;">${label}:</td>
+                            <td style="padding: 10px; color: #333;">${escapeHtml(String(value))}</td>
+                        </tr>
+                    `;
+                }
+            }
+            html += '</table>';
+            return html;
+        }
+
+        // Escape HTML special characters
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Clear
+        clearBtn.addEventListener('click', () => {
+            selectedImageFile = null;
+            fileInput.value = '';
+            selectedFile.classList.remove('show');
+            submitBtn.disabled = true;
+            result.classList.remove('show');
+            clearError();
+        });
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', () => {
+            let text = '';
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            
+            if (mode === 'structured') {
+                // Extract text from table
+                const rows = resultContent.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length === 2) {
+                        text += cells[0].textContent + ' ' + cells[1].textContent + '\n';
+                    }
+                });
+            } else {
+                text = resultContent.textContent;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Copy to Clipboard';
+                }, 2000);
+            });
+        });
+
+        // Error handling
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.add('show');
+        }
+
+        function clearError() {
+            errorMsg.classList.remove('show');
+            errorMsg.textContent = '';
+        }
+    </script>
+</body>
+</html>
