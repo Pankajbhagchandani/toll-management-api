@@ -24,7 +24,7 @@ async function scrapeRentaaData() {
   try {
     // Create a Browserbase session
     console.log("Creating Browserbase session...");
-    const session = await browserbase.sessions.create({
+    const session = await browserbase.createSession({
       projectId: PROJECT_ID || "",
       browserSettings: {
     // Standard on Developer, Hobby, and Startup plans
@@ -36,7 +36,7 @@ async function scrapeRentaaData() {
 
     // Get the WebSocket URL for Playwright connection
     console.log("Connecting to browser...");
-    const browserWSEndpoint = session.connectUrl;
+    const browserWSEndpoint = `wss://ws.browserbase.com/cdp?session_id=${sessionId}`;
 
     // Connect with Playwright - connectOverCDP returns a Browser instance
     const browser = await chromium.connectOverCDP(browserWSEndpoint);
