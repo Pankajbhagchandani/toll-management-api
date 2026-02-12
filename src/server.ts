@@ -24,11 +24,11 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Only allow image files
-  if (file.mimetype.startsWith("image/")) {
+  // Allow image files and PDFs
+  if (file.mimetype.startsWith("image/") || file.mimetype === "application/pdf") {
     cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed"));
+    cb(new Error("Only image files and PDFs are allowed"));
   }
 };
 
@@ -53,12 +53,12 @@ app.get("/health", (req: Request, res: Response) => {
 app.post("/api/extract", upload.single("image"), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: "No image file provided" });
+      return res.status(400).json({ error: "No file provided" });
     }
 
     const filePath = req.file.path;
 
-    // Extract text from the uploaded image
+    // Extract text from the uploaded file
     const extractedText = await extractText(filePath);
 
     // Clean up the uploaded file
@@ -84,13 +84,13 @@ app.post("/api/extract", upload.single("image"), async (req: Request, res: Respo
 app.post("/api/extract-structured", upload.single("image"), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: "No image file provided" });
+      return res.status(400).json({ error: "No file provided" });
     }
 
     const filePath = req.file.path;
     const fields = req.body.fields ? JSON.parse(req.body.fields) : ["invoiceNumber", "licensePlate", "amountDue", "dueDate"];
 
-    // Extract structured data from the uploaded image
+    // Extract structured data from the uploaded file
     const structuredData = await extractStructuredData(filePath, fields);
 
     // Clean up the uploaded file
@@ -141,7 +141,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
-║  Image Text Extractor Server Started   ║
+║ Document Text Extractor Server Started ║
 ╠════════════════════════════════════════╣
 ║  Server running at:                    ║
 ║   http://localhost:${PORT}            ║

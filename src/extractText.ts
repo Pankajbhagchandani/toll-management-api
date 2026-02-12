@@ -12,13 +12,14 @@ if (!apiKey) {
 }
 const client = new Anthropic({ apiKey });
 
-async function fetchImageAsBase64(imagePath: string): Promise<{ data: string; mediaType: string }> {
+async function fetchFileAsBase64(filePath: string): Promise<{ data: string; mediaType: string }> {
   // Check if it's a local file
-  if (fs.existsSync(imagePath)) {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64 = imageBuffer.toString("base64");
-    const ext = path.extname(imagePath).toLowerCase();
+  if (fs.existsSync(filePath)) {
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64 = fileBuffer.toString("base64");
+    const ext = path.extname(filePath).toLowerCase();
     const mediaType = 
+      ext === ".pdf" ? "application/pdf" :
       ext === ".png" ? "image/png" :
       ext === ".gif" ? "image/gif" :
       ext === ".webp" ? "image/webp" :
@@ -28,7 +29,7 @@ async function fetchImageAsBase64(imagePath: string): Promise<{ data: string; me
   
   // Otherwise treat as URL
   return new Promise((resolve, reject) => {
-    https.get(imagePath, (response) => {
+    https.get(filePath, (response) => {
       const chunks: Buffer[] = [];
       response.on("data", (chunk) => chunks.push(chunk));
       response.on("end", () => {
@@ -44,8 +45,35 @@ async function fetchImageAsBase64(imagePath: string): Promise<{ data: string; me
   });
 }
 
-export async function extractText(imagePath: string): Promise<string> {
-  const { data: base64Image, mediaType } = await fetchImageAsBase64(imagePath);
+export async function extractText(filePath: string): Promise<string> {
+  const { data: base64Data, mediaType } = await fetchFileAsBase64(filePath);
+
+  const messageContent: any[] = [];
+  
+  if (mediaType === "application/pdf") {
+    messageContent.push({
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: mediaType,
+        data: base64Data,
+      },
+    });
+  } else {
+    messageContent.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        data: base64Data,
+      },
+    });
+  }
+
+  messageContent.push({
+    type: "text",
+    text: "Please extract all text from this document and return it in markdown format.",
+  });
 
   const response = await client.messages.create({
     model: "claude-opus-4-1-20250805",
@@ -53,20 +81,7 @@ export async function extractText(imagePath: string): Promise<string> {
     messages: [
       {
         role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-              data: base64Image,
-            },
-          },
-          {
-            type: "text",
-            text: "Please extract all text from this image and return it in markdown format.",
-          },
-        ],
+        content: messageContent,
       },
     ],
   });
@@ -90,8 +105,8 @@ export interface InvoiceData {
   [key: string]: string | undefined;
 }
 
-export async function extractStructuredData(imagePath: string, fields: string[] = ["invoiceNumber", "licensePlate", "amountDue", "dueDate"]): Promise<InvoiceData> {
-  const { data: base64Image, mediaType } = await fetchImageAsBase64(imagePath);
+export async function extractStructuredData(filePath: string, fields: string[] = ["invoiceNumber", "licensePlate", "amountDue", "dueDate"]): Promise<InvoiceData> {
+  const { data: base64Data, mediaType } = await fetchFileAsBase64(filePath);
 
   const fieldsDescription = fields.map(field => {
     const descriptions: { [key: string]: string } = {
@@ -105,24 +120,31 @@ export async function extractStructuredData(imagePath: string, fields: string[] 
     return descriptions[field] || field;
   }).join(", ");
 
-  const response = await client.messages.create({
-    model: "claude-opus-4-1-20250805",
-    max_tokens: 500,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-              data: base64Image,
-            },
-          },
-          {
-            type: "text",
-            text: `Extract the following information from this image and return ONLY a JSON object (no markdown, no extra text): ${fieldsDescription}.
+  const messageContent: any[] = [];
+  
+  if (mediaType === "application/pdf") {
+    messageContent.push({
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: mediaType,
+        data: base64Data,
+      },
+    });
+  } else {
+    messageContent.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        data: base64Data,
+      },
+    });
+  }
+
+  messageContent.push({
+    type: "text",
+    text: `Extract the following information from this document and return ONLY a JSON object (no markdown, no extra text): ${fieldsDescription}.
 
 Return as JSON like this example:
 {
@@ -133,8 +155,15 @@ Return as JSON like this example:
 }
 
 If a field is not found, use null.`,
-          },
-        ],
+  });
+
+  const response = await client.messages.create({
+    model: "claude-opus-4-1-20250805",
+    max_tokens: 500,
+    messages: [
+      {
+        role: "user",
+        content: messageContent,
       },
     ],
   });

@@ -262,8 +262,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>📄 Image Text Extractor</h1>
-        <p class="subtitle">Upload an image and extract all text from it/p>
+        <h1>📄 Document Text Extractor</h1>
+        <p class="subtitle">Upload an image or PDF and extract all text from it</p>
 
         <div class="error" id="errorMsg"></div>
 
@@ -272,8 +272,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             <p class="file-input">Click to upload or drag and drop</p>
-            <p class="hint">PNG, JPG, GIF, WEBP up to 5MB</p>
-            <input type="file" id="fileInput" accept="image/*" />
+            <p class="hint">PNG, JPG, GIF, WEBP, PDF up to 5MB</p>
+            <input type="file" id="fileInput" accept="image/*,.pdf" />
         </div>
 
         <div class="selected-file" id="selectedFile">
@@ -342,8 +342,10 @@
                 }
 
                 // Check file type
-                if (!file.type.startsWith('image/')) {
-                    showError('Please select a valid image file');
+                const isImage = file.type.startsWith('image/');
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                if (!isImage && !isPdf) {
+                    showError('Please select a valid image or PDF file');
                     return;
                 }
 
